@@ -1,5 +1,3 @@
-require("/move/move.lua")
-
 -- Capture arguments passed to the script
 local args = {...}
 
@@ -9,8 +7,7 @@ print("Fuel level: " .. fuelBefore)
 -- Convert arguments to numbers
 local arg1 = tonumber(args[1])
 
---TODO: check bucket in inventory
---TODO: check if chest to left
+
 --give warning prints if these are not met
 
 -- Check if all arguments were provided and are valid integers
