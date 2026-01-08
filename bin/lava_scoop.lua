@@ -171,7 +171,7 @@ end
 local args = {...}
 local iterations = 1
 
-if #args == 1 and args[i] == 'r' then
+if #args == 1 and args[1] == 'r' then
     --cauldron afk recharge
     while not hasBucket() do
         print("Give me a bucket...")
