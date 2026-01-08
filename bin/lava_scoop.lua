@@ -184,13 +184,13 @@ if #args == 1 and args[1] == 'r' then
             turtle.select(bucketSlot)
             turtle.place()
             move.refuel()
-            --checkFuel()
-            if 1 == 1 then
-                print("Fuel level: " .. turtle.getFuelLevel())
+            print("Fuel level: " .. turtle.getFuelLevel())
+
+            if turtle.getFuelLevel() == turtle.getFuelLimit() then
                 return
             end
         end
-        sleep(2)
+        sleep(5)
     end
 end
 
