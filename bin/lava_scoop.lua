@@ -171,6 +171,24 @@ end
 local args = {...}
 local iterations = 1
 
+if #args == 1 and args[i] == 'r' then
+    --cauldron afk recharge
+    while not hasBucket() do
+        print("Give me a bucket...")
+        sleep(2)
+    end
+    while true do
+        x, info = turtle.inspect()
+        if x and info.name == 'minecraft:lava_cauldron' then
+            local bucketSlot = findEmptyBucket()
+            turtle.select(bucketSlot)
+            turtle.place()
+            move.refuel()
+        end
+        sleep(2)
+    end
+end
+
 if #args == 1 then
     iterations = tonumber(args[1])
 else
