@@ -184,8 +184,8 @@ if #args == 1 and args[1] == 'r' then
             turtle.select(bucketSlot)
             turtle.place()
             move.refuel()
-            return
-            if checkFuel() then
+            --checkFuel()
+            if 1 == 1 then
                 print("Fuel level: " .. turtle.getFuelLevel())
                 return
             end
