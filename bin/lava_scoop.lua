@@ -187,6 +187,7 @@ if #args == 1 and args[1] == 'r' then
             print("Fuel level: " .. turtle.getFuelLevel())
 
             if turtle.getFuelLevel() == turtle.getFuelLimit() then
+                turtle.up()
                 return
             end
         end
