@@ -183,7 +183,7 @@ if #args == 1 and args[1] == 'r' then
             local bucketSlot = findEmptyBucket()
             turtle.select(bucketSlot)
             turtle.place()
-            move.refuel()
+            turtle.refuel()
             print("Fuel level: " .. turtle.getFuelLevel())
 
             if turtle.getFuelLevel() == turtle.getFuelLimit() then
