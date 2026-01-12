@@ -171,6 +171,8 @@ end
 local args = {...}
 local iterations = 1
 
+-- lava_scoop r
+-- install lava_scoop r
 if #args == 1 and args[1] == 'r' then
     --cauldron afk recharge
     print("charging...")

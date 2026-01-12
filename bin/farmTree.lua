@@ -227,6 +227,41 @@ function wheatFarm(radius)
     
 end
 
+function wheatFarm_installable(radius)
+    --on wakeup move to limits of enclosure and then recenter
+    for i = 1, radius*2 do
+        turtle.forward()
+    end
+    turtle.turnRight()
+    for i = 1, radius*2 do
+        turtle.forward()
+    end
+
+    turtle.turnRight()
+    turtle.turnRight()
+
+    for i = 1, radius do
+        turtle.forward()
+    end
+    turtle.turnRight()
+    for i = 1, radius do
+        turtle.forward()
+    end
+
+
+
+    while true do
+        sleep(600) --wheat grows fully on average in one day (20 minutes)
+        local transferResult = lib_inv_mgmt.transferInventory(5, "up", {"minecraft:wheat"}, true)
+        if not transferResult then
+            print("storage full")
+            return
+        end
+        local didSomething = m.spiralOut(radius,harvestWheat)
+    end
+    
+end
+
 function harvestWheat()
     if f.isFullyGrownWheatBelow() then
         turtle.digDown()
@@ -267,6 +302,13 @@ if arg1 then
         local rad = tonumber(args[2])
         if rad then
             wheatFarm(rad)
+        else
+            print("enter radius as second argument")
+        end
+    elseif arg1 == 5 then
+        local rad = tonumber(args[2])
+        if rad then
+            wheatFarm_installable(rad)
         else
             print("enter radius as second argument")
         end
