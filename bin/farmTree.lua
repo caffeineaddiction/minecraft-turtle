@@ -248,16 +248,14 @@ function wheatFarm_installable(radius)
         turtle.forward()
     end
 
-
-
     while true do
-        sleep(600) --wheat grows fully on average in one day (20 minutes)
         local transferResult = lib_inv_mgmt.transferInventory(5, "up", {"minecraft:wheat"}, true)
         if not transferResult then
             print("storage full")
             return
         end
         local didSomething = m.spiralOut(radius,harvestWheat)
+        sleep(300) --wheat grows fully on average in one day (20 minutes)
     end
     
 end
