@@ -243,7 +243,7 @@ function wheatFarm_installable(radius)
     for i = 1, radius do
         turtle.forward()
     end
-    turtle.turnRight()
+    turtle.turnLeft()
     for i = 1, radius do
         turtle.forward()
     end
