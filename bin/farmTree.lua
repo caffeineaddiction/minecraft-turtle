@@ -228,6 +228,7 @@ function wheatFarm(radius)
 end
 
 function wheatFarm_installable(radius)
+    print("farming wheat...")
     --on wakeup move to limits of enclosure and then recenter
     for i = 1, radius*2 do
         turtle.forward()
