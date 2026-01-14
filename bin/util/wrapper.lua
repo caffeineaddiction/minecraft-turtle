@@ -4,15 +4,40 @@
 -- shell.run("background", "/bin/util/wrapper", "/usr/bin/vncd")
 -- shell.run("background", "/bin/util/wrapper", "/bin/util/blockd")
 -- shell.run("background", "/bin/util/wrapper", "gps", "host", 0, 311, 0)
+-- shell.run("background", "/bin/util/wrapper", "--title", "mytitle", "/usr/bin/vncd")
 
 local args = {...}
 if #args == 0 then
-    print("Usage: wrapper <program> [arg1] [arg2] ...")
+    print("Usage: wrapper [--title <title>] <program> [arg1] [arg2] ...")
     return
 end
 
-local program = args[1]
-local programArgs = {table.unpack(args, 2)}
+-- Parse optional --title argument
+local title = nil
+local programStart = 1
+if args[1] == "--title" and args[2] then
+    title = args[2]
+    programStart = 3
+end
+
+if #args < programStart then
+    print("Usage: wrapper [--title <title>] <program> [arg1] [arg2] ...")
+    return
+end
+
+local program = args[programStart]
+local programArgs = {table.unpack(args, programStart + 1)}
+
+-- If no explicit title, extract from program path (e.g., "/usr/bin/vncd" -> "vncd")
+if not title then
+    title = program:match("([^/]+)$") or program  -- get filename from path
+    title = title:gsub("%.lua$", "")  -- remove .lua extension if present
+end
+
+-- Set multishell tab title if available
+if multishell then
+    multishell.setTitle(multishell.getCurrent(), title)
+end
 
 local function runProgram()
     print("Starting program: " .. program)
