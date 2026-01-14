@@ -20,16 +20,20 @@ shell.run("/bin/gohome.lua")
 if peripheral.find("modem") then
     -- Use multishell if available (advanced computers/turtles) to run in separate tabs
     if multishell then
+        -- Environment for launched programs (need shell API)
+        local env = {shell = shell}
+        setmetatable(env, {__index = _G})
+
         -- Launch vncd in its own tab (wrapper.lua, vncd has no .lua extension)
         if autorun and fs.exists("/autorun.lua") then
-            multishell.launch({}, "/bin/util/wrapper.lua", "/usr/bin/vncd", "/autorun.lua")
+            multishell.launch(env, "/bin/util/wrapper.lua", "/usr/bin/vncd", "/autorun.lua")
         else
-            multishell.launch({}, "/bin/util/wrapper.lua", "/usr/bin/vncd")
+            multishell.launch(env, "/bin/util/wrapper.lua", "/usr/bin/vncd")
         end
 
         -- Launch wsvncd in its own tab if installed
         if fs.exists("/usr/bin/wsvncd.lua") then
-            multishell.launch({}, "/bin/util/wrapper.lua", "/usr/bin/wsvncd.lua", "ws://192.168.41.134:3000")
+            multishell.launch(env, "/bin/util/wrapper.lua", "/usr/bin/wsvncd.lua", "ws://192.168.41.134:3000")
         end
 
         -- Focus on vncd tab (tab 2, startup is tab 1)
