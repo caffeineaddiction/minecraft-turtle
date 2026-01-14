@@ -18,25 +18,32 @@ shell.run("/bin/gohome.lua")
 
 -- NOTE:  wrapper does not return
 if peripheral.find("modem") then
-    -- Run vncd (rednet terminal) and wsvncd (websocket terminal) in parallel
-    local function runVncd()
+    -- Use multishell if available (advanced computers/turtles) to run in separate tabs
+    if multishell then
+        -- Launch vncd in its own tab
+        if autorun and fs.exists("/autorun.lua") then
+            multishell.launch({}, "/bin/util/wrapper", "/usr/bin/vncd", "/autorun.lua")
+        else
+            multishell.launch({}, "/bin/util/wrapper", "/usr/bin/vncd")
+        end
+
+        -- Launch wsvncd in its own tab if installed
+        if fs.exists("/usr/bin/wsvncd.lua") then
+            multishell.launch({}, "/bin/util/wrapper", "/usr/bin/wsvncd.lua", "ws://192.168.41.134:3000")
+        end
+
+        -- Focus on vncd tab (tab 1, since we're tab 0)
+        multishell.setFocus(2)
+        return
+    else
+        -- Fallback for basic computers: run vncd only
         if autorun and fs.exists("/autorun.lua") then
             shell.run("/bin/util/wrapper", "/usr/bin/vncd", "/autorun.lua")
         else
             shell.run("/bin/util/wrapper", "/usr/bin/vncd")
         end
+        return
     end
-
-    local function runWsvncd()
-        -- Only run wsvncd if it's installed
-        if fs.exists("/usr/bin/wsvncd.lua") then
-            shell.run("/bin/util/wrapper", "/usr/bin/wsvncd.lua", "ws://192.168.41.134:3000")
-        end
-    end
-
-    -- Run both services in parallel - if either exits, both stop
-    parallel.waitForAny(runVncd, runWsvncd)
-    return
 else
     -- clear the screen
     term.clear()
