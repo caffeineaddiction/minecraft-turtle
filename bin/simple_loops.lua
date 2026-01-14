@@ -6,8 +6,8 @@ if arg1 then
         while true do
             turtle.attack()
         end
-    elseif(arg1 == 'placeUp')
-    local delay = tonumber(args[2])
+    elseif(arg1 == 'placeUp') then
+        local delay = tonumber(args[2])
         while true do
             sleep(delay)
             turtle.placeUp()
