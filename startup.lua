@@ -45,6 +45,9 @@ if peripheral.find("modem") then
         if vncdTab then
             multishell.setFocus(vncdTab)
         end
+
+        -- Set main tab title again right before returning (tab IDs can shift)
+        multishell.setTitle(multishell.getCurrent(), "main")
         return
     else
         -- Fallback for basic computers: run vncd only
