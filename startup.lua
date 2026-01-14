@@ -20,6 +20,10 @@ shell.run("/bin/gohome.lua")
 if peripheral.find("modem") then
     -- Use multishell if available (advanced computers/turtles) to run in separate tabs
     if multishell then
+        -- Set current tab (startup) title to "main"
+        local mainTab = multishell.getCurrent()
+        multishell.setTitle(mainTab, "main")
+
         -- Environment for launched programs (need shell API)
         local env = {shell = shell}
         setmetatable(env, {__index = _G})
