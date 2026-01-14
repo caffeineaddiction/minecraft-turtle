@@ -11,7 +11,7 @@ if args[1] then
         while true do
             sleep(delay)
             turtle.placeUp()
-            sleep(10)
+            sleep(15)
             turtle.placeUp()
         end
     end
