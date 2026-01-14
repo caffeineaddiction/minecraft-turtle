@@ -24,20 +24,29 @@ if peripheral.find("modem") then
         local env = {shell = shell}
         setmetatable(env, {__index = _G})
 
-        -- Launch vncd in its own tab (wrapper.lua, vncd has no .lua extension)
+        -- Launch vncd in its own tab
+        local vncdTab
         if autorun and fs.exists("/autorun.lua") then
-            multishell.launch(env, "/bin/util/wrapper.lua", "/usr/bin/vncd", "/autorun.lua")
+            vncdTab = multishell.launch(env, "/bin/util/wrapper.lua", "/usr/bin/vncd", "/autorun.lua")
         else
-            multishell.launch(env, "/bin/util/wrapper.lua", "/usr/bin/vncd")
+            vncdTab = multishell.launch(env, "/bin/util/wrapper.lua", "/usr/bin/vncd")
+        end
+        if vncdTab then
+            multishell.setTitle(vncdTab, "vncd")
         end
 
         -- Launch wsvncd in its own tab if installed
         if fs.exists("/usr/bin/wsvncd.lua") then
-            multishell.launch(env, "/bin/util/wrapper.lua", "/usr/bin/wsvncd.lua", "ws://192.168.41.134:3000")
+            local wsvncdTab = multishell.launch(env, "/bin/util/wrapper.lua", "/usr/bin/wsvncd.lua", "ws://192.168.41.134:3000")
+            if wsvncdTab then
+                multishell.setTitle(wsvncdTab, "wsvncd")
+            end
         end
 
-        -- Focus on vncd tab (tab 2, startup is tab 1)
-        multishell.setFocus(2)
+        -- Focus on vncd tab
+        if vncdTab then
+            multishell.setFocus(vncdTab)
+        end
         return
     else
         -- Fallback for basic computers: run vncd only
