@@ -20,19 +20,19 @@ shell.run("/bin/gohome.lua")
 if peripheral.find("modem") then
     -- Use multishell if available (advanced computers/turtles) to run in separate tabs
     if multishell then
-        -- Launch vncd in its own tab
+        -- Launch vncd in its own tab (wrapper.lua, vncd has no .lua extension)
         if autorun and fs.exists("/autorun.lua") then
-            multishell.launch({}, "/bin/util/wrapper", "/usr/bin/vncd", "/autorun.lua")
+            multishell.launch({}, "/bin/util/wrapper.lua", "/usr/bin/vncd", "/autorun.lua")
         else
-            multishell.launch({}, "/bin/util/wrapper", "/usr/bin/vncd")
+            multishell.launch({}, "/bin/util/wrapper.lua", "/usr/bin/vncd")
         end
 
         -- Launch wsvncd in its own tab if installed
         if fs.exists("/usr/bin/wsvncd.lua") then
-            multishell.launch({}, "/bin/util/wrapper", "/usr/bin/wsvncd.lua", "ws://192.168.41.134:3000")
+            multishell.launch({}, "/bin/util/wrapper.lua", "/usr/bin/wsvncd.lua", "ws://192.168.41.134:3000")
         end
 
-        -- Focus on vncd tab (tab 1, since we're tab 0)
+        -- Focus on vncd tab (tab 2, startup is tab 1)
         multishell.setFocus(2)
         return
     else
