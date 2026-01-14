@@ -1,12 +1,12 @@
 local args = {...}
 
 print("looping...")
-if arg1 then
-    if(arg1 == 'attack') then
+if args[1] then
+    if(args[1] == 'attack') then
         while true do
             turtle.attack()
         end
-    elseif(arg1 == 'placeUp') then
+    elseif(args[1] == 'placeUp') then
         local delay = tonumber(args[2])
         while true do
             sleep(delay)
