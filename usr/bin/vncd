@@ -139,6 +139,11 @@ local co = {thread = shellRoutine, target = redirect}
 
 resumeThread(co, {})
 
+-- Set multishell tab title to "vncd" (override shell's default "shell" title)
+if multishell then
+	multishell.setTitle(multishell.getCurrent(), "vncd")
+end
+
 _G.nsh = nshAPI
 
 while coroutine.status(co.thread) ~= "dead" do
