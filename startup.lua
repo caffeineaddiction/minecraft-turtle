@@ -18,13 +18,25 @@ shell.run("/bin/gohome.lua")
 
 -- NOTE:  wrapper does not return
 if peripheral.find("modem") then
-    if autorun and fs.exists("/autorun.lua") then
-        shell.run("/bin/util/wrapper", "/usr/bin/vncd", "/autorun.lua")
-        return
-    else
-        shell.run("/bin/util/wrapper", "/usr/bin/vncd")
-        return
+    -- Run vncd (rednet terminal) and wsvncd (websocket terminal) in parallel
+    local function runVncd()
+        if autorun and fs.exists("/autorun.lua") then
+            shell.run("/bin/util/wrapper", "/usr/bin/vncd", "/autorun.lua")
+        else
+            shell.run("/bin/util/wrapper", "/usr/bin/vncd")
+        end
     end
+
+    local function runWsvncd()
+        -- Only run wsvncd if it's installed
+        if fs.exists("/usr/bin/wsvncd.lua") then
+            shell.run("/bin/util/wrapper", "/usr/bin/wsvncd.lua", "ws://192.168.41.134:3000")
+        end
+    end
+
+    -- Run both services in parallel - if either exits, both stop
+    parallel.waitForAny(runVncd, runWsvncd)
+    return
 else
     -- clear the screen
     term.clear()
