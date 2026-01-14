@@ -144,7 +144,7 @@ _G.nsh = nshAPI
 while coroutine.status(co.thread) ~= "dead" do
 	event = {os.pullEventRaw()}
 	if event[1] == "rednet_message" then
-		if packetConversion[string.sub(event[3], 1, 2)] then
+		if type(event[3]) == "string" and packetConversion[string.sub(event[3], 1, 2)] then
 			--this is a packet meant for us.
 			conn = event[2]
 			packetType = packetConversion[string.sub(event[3], 1, 2)]
