@@ -96,6 +96,7 @@ function megaSpruce()
             m.turnLeft()
         end
         m.goHome()
+        m.refuel()
 
         print("Waiting for leaves to fall")
         sleep(180) --wait for leaves to fall
