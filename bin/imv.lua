@@ -12,7 +12,7 @@ PATTERN FORMAT:
   <location>/<item>:<count>
 
   location: peripheral name, fuzzy match (chest23), ./ (self), * or ../ (any)
-  item:     item name or fuzzy match, optional (defaults to *)
+  item:     item name or fuzzy match, =name for exact match (defaults to *)
   count:    number, * or + for full stack (defaults to 1)
 
 EXAMPLES:
@@ -20,6 +20,7 @@ EXAMPLES:
   imv ./coal:* chest23         -- full stack of coal from self to chest23
   imv */diamond:+ ./           -- full stack of diamonds from anywhere to self
   imv ./lava:1 ../             -- 1 lava from self to any available chest
+  imv */=bucket:1 ./           -- 1 empty bucket (exact match, not lava_bucket)
 
 LIBRARY USAGE:
   local imv = require("imv")
@@ -193,12 +194,23 @@ local function isLocalTurtle(name)
 end
 
 -- Check if item name matches pattern
+-- Supports exact match with = prefix (e.g., =minecraft:bucket or =bucket)
 local function itemMatches(itemName, itemPattern)
     if itemPattern == "*" then
         return true
     end
 
     local normalizedName = itemName:lower()
+
+    -- Exact match mode: pattern starts with =
+    if itemPattern:sub(1, 1) == "=" then
+        local exactPattern = itemPattern:sub(2):lower()
+        -- Match full name or short name (without namespace)
+        local shortName = normalizedName:gsub("^[^:]+:", "")
+        return normalizedName == exactPattern or shortName == exactPattern
+    end
+
+    -- Fuzzy match mode (default)
     local normalizedPattern = itemPattern:lower()
 
     if normalizedName:find(normalizedPattern, 1, true) then
@@ -371,6 +383,23 @@ function imv.move(srcPattern, dstPattern, opts)
 
     if verbose then
         print(string.format("Total: %d items transferred", totalTransferred))
+    end
+
+    -- Fire turtle_inventory event if local turtle was involved (as source or destination)
+    local localName = imv.getLocalName()
+    if localName then
+        for _, name in ipairs(srcNames) do
+            if name == localName then
+                os.queueEvent("turtle_inventory")
+                break
+            end
+        end
+        for _, name in ipairs(dstNames) do
+            if name == localName then
+                os.queueEvent("turtle_inventory")
+                break
+            end
+        end
     end
 
     return totalTransferred, nil
