@@ -69,6 +69,11 @@ local function checkAndRefuel()
                 turtle.select(slot)
                 if turtle.refuel() then
                     print("Refueled to " .. turtle.getFuelLevel())
+                    -- Return empty bucket to network
+                    local returned, retErr = imv.move("./=bucket:1", "../")
+                    if returned > 0 then
+                        print("Returned empty bucket to network")
+                    end
                     return true
                 end
             end
@@ -245,9 +250,9 @@ local function farmCrops()
         -- Dump harvested items to network
         dumpToNetwork()
 
-        -- Small delay before next cycle
-        print("Cycle complete, starting next cycle...")
-        sleep(1)
+        -- Pause before next cycle
+        print("Cycle complete, sleeping for 5 minutes...")
+        sleep(300)
     end
 end
 
