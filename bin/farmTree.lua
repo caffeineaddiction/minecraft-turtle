@@ -96,6 +96,7 @@ function megaSpruce()
             m.turnLeft()
         end
         m.goHome()
+        m.refuel()
 
         print("Waiting for leaves to fall")
         sleep(180) --wait for leaves to fall
@@ -227,6 +228,40 @@ function wheatFarm(radius)
     
 end
 
+function wheatFarm_installable(radius)
+    print("farming wheat...")
+    --on wakeup move to limits of enclosure and then recenter
+    for i = 1, radius*2 do
+        turtle.forward()
+    end
+    turtle.turnRight()
+    for i = 1, radius*2 do
+        turtle.forward()
+    end
+
+    turtle.turnRight()
+    turtle.turnRight()
+
+    for i = 1, radius do
+        turtle.forward()
+    end
+    turtle.turnLeft()
+    for i = 1, radius do
+        turtle.forward()
+    end
+
+    while true do
+        local transferResult = lib_inv_mgmt.transferInventory(5, "up", {"minecraft:wheat"}, true)
+        if not transferResult then
+            print("storage full")
+            return
+        end
+        local didSomething = m.spiralOut(radius,harvestWheat)
+        sleep(300) --wheat grows fully on average in one day (20 minutes)
+    end
+    
+end
+
 function harvestWheat()
     if f.isFullyGrownWheatBelow() then
         turtle.digDown()
@@ -267,6 +302,13 @@ if arg1 then
         local rad = tonumber(args[2])
         if rad then
             wheatFarm(rad)
+        else
+            print("enter radius as second argument")
+        end
+    elseif arg1 == 5 then
+        local rad = tonumber(args[2])
+        if rad then
+            wheatFarm_installable(rad)
         else
             print("enter radius as second argument")
         end

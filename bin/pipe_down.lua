@@ -4,7 +4,7 @@ local lib_debug = require("/lib/lib_debug")
 local function findCobbleSlab()
     for slot = 1, 16 do
         local item = turtle.getItemDetail(slot)
-        if item and item.name == "minecraft:cobblestone_slab" then
+        if item and (item.name == "minecraft:cobblestone_slab" or item.name == "minecraft:cobbled_deepslate_slab") then
             return slot
         end
     end

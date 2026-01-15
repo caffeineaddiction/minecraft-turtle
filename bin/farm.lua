@@ -1,6 +1,8 @@
 -- Assuming storage and move libraries are already required
 local storage = require("/lib/storage")
 local move = require("/lib/move")
+local farmLib = require("/lib/farming")
+local lib_inv_mgmt = require("/lib/lib_inv_mgmt")
 
 local function attemptFarmFlint()
     local GRAVEL_SLOT = 1
@@ -106,6 +108,43 @@ local function farmObsidian()
     end
 end
 
+local function farmWheat(row, col)
+    while true do
+        local SEED_SLOT = 1
+        move.setHome()
+        move.goForward(false)
+        local dir = 0
+        for c = 1, col do
+            for r = 1, row do
+                if farmLib.isFullyGrownWheatBelow() then
+                    turtle.digDown()
+                    lib_inv_mgmt.selectWithRefill(1,5)
+                    turtle.placeDown()
+                end
+                move.goForward(false)
+            end
+            if dir == 0 then
+                move.turnRight()
+                move.goForward(false)
+                move.turnRight()
+                dir = 1
+            else
+                move.turnLeft()
+                move.goForward(false)
+                move.turnLeft()
+                dir = 0
+            end
+        end
+        move.pathTo(1,0,0)
+        move.turnTo(1,0)
+        move.goBackwards(false)
+
+        sleep(10*60)
+    end
+end
+
+
+
 local args = {...}
 
 -- Function to parse arguments
@@ -123,6 +162,12 @@ local function parseArgs()
             print("Farming Obsidian")
             farmObsidian()
             return            
+        elseif args[i] == "wheat" then
+            local row = args[i+1]
+            local col = args[i+2]
+            print("Farming Wheat")
+            farmWheat(row, col)
+            return
         end
     end
     print("Not Supported")
