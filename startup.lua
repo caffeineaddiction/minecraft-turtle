@@ -18,11 +18,44 @@ shell.run("/bin/gohome.lua")
 
 -- NOTE:  wrapper does not return
 if peripheral.find("modem") then
-    if autorun and fs.exists("/autorun.lua") then
-        shell.run("/bin/util/wrapper", "/usr/bin/vncd", "/autorun.lua")
+    -- Use multishell if available (advanced computers/turtles) to run in separate tabs
+    if multishell then
+        -- Set current tab (startup) title to "shell"
+        local mainTab = multishell.getCurrent()
+        multishell.setTitle(mainTab, "shell")
+
+        -- Environment for launched programs (need shell API)
+        local env = {shell = shell}
+        setmetatable(env, {__index = _G})
+
+        -- Launch vncd in its own tab
+        local vncdTab
+        if autorun and fs.exists("/autorun.lua") then
+            vncdTab = multishell.launch(env, "/bin/util/wrapper.lua", "--title", "vncd", "/usr/bin/vncd", "/autorun.lua")
+        else
+            vncdTab = multishell.launch(env, "/bin/util/wrapper.lua", "--title", "vncd", "/usr/bin/vncd")
+        end
+
+        -- Launch wsvncd in its own tab if installed
+        if fs.exists("/usr/bin/wsvncd.lua") then
+            multishell.launch(env, "/bin/util/wrapper.lua", "--title", "wsvncd", "/usr/bin/wsvncd.lua", "ws://192.168.41.134:3000")
+        end
+
+        -- Focus on vncd tab
+        if vncdTab then
+            multishell.setFocus(vncdTab)
+        end
+
+        -- Set main tab title again right before returning (use saved mainTab ID)
+        multishell.setTitle(mainTab, "shell")
         return
     else
-        shell.run("/bin/util/wrapper", "/usr/bin/vncd")
+        -- Fallback for basic computers: run vncd only
+        if autorun and fs.exists("/autorun.lua") then
+            shell.run("/bin/util/wrapper", "/usr/bin/vncd", "/autorun.lua")
+        else
+            shell.run("/bin/util/wrapper", "/usr/bin/vncd")
+        end
         return
     end
 else
