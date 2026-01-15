@@ -171,6 +171,33 @@ end
 local args = {...}
 local iterations = 1
 
+-- lava_scoop r
+-- install lava_scoop r
+if #args == 1 and args[1] == 'r' then
+    --cauldron afk recharge
+    print("charging...")
+    while not hasBucket() do
+        print("Give me a bucket...")
+        sleep(2)
+    end
+    while true do
+        x, info = turtle.inspect()
+        if x and info.name == 'minecraft:lava_cauldron' then
+            local bucketSlot = findEmptyBucket()
+            turtle.select(bucketSlot)
+            turtle.place()
+            turtle.refuel()
+            print("Fuel level: " .. turtle.getFuelLevel())
+
+            if turtle.getFuelLevel() == turtle.getFuelLimit() then
+                turtle.up()
+                return
+            end
+        end
+        sleep(5)
+    end
+end
+
 if #args == 1 then
     iterations = tonumber(args[1])
 else
