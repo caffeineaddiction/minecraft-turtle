@@ -5,11 +5,6 @@ The turtle starts facing a wired modem. It grabs empty buckets from the network,
 collects lava from cauldrons above it in a snake pattern, then deposits the
 lava buckets back into the network.
 
-Layout (viewed from above, T = turtle start position facing modem M):
-  [C][C][C][C][C]
-  [C][C][C][C][C]
-  [T] <- facing [M]
-
 The turtle moves in a snake pattern under the cauldrons.
 ]]
 
@@ -169,7 +164,8 @@ local function farmLava()
         move.turnRight()
 
         -- First row: 5 cauldrons
-        for i = 1, 5 do
+        tryFillBucket()
+        for i = 1, 4 do
             tryFillBucket()
             move.goForward(false)
         end
@@ -180,7 +176,8 @@ local function farmLava()
         move.turnLeft()
 
         -- Second row: 5 cauldrons
-        for i = 1, 5 do
+        tryFillBucket()
+        for i = 1, 4 do
             tryFillBucket()
             move.goForward(false)
         end
