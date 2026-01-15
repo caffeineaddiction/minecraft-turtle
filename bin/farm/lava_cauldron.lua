@@ -100,6 +100,49 @@ local function refuelLoop()
     end
 end
 
+-- Restack all empty buckets into slot 1
+local function restackEmptyBuckets()
+    turtle.select(1)
+    for slot = 2, 16 do
+        local item = turtle.getItemDetail(slot)
+        if item and item.name == "minecraft:bucket" then
+            turtle.select(slot)
+            turtle.transferTo(1)
+        end
+    end
+    turtle.select(1)
+end
+
+-- Return excess empty buckets to network (keep only 16)
+local function returnExcessBuckets()
+    local bucketCount = countEmptyBuckets()
+    if bucketCount <= 16 then
+        return 0
+    end
+
+    local excess = bucketCount - 16
+    local returned = 0
+
+    -- First restack to slot 1 so we know where they are
+    restackEmptyBuckets()
+
+    -- Now return the excess from slots 2+ (slot 1 should have 16)
+    while returned < excess do
+        local toReturn = excess - returned
+        local count, err = imv.move("./=bucket:" .. toReturn, "../")
+        if count > 0 then
+            returned = returned + count
+        else
+            break
+        end
+    end
+
+    if returned > 0 then
+        print("Returned " .. returned .. " excess bucket(s) to network")
+    end
+    return returned
+end
+
 -- Check if we have any lava buckets in inventory
 local function hasLavaBuckets()
     for slot = 1, 16 do
@@ -149,6 +192,9 @@ local function farmLava()
             print("No buckets grabbed: " .. (err or "none available"))
         end
 
+        -- Return any excess buckets over 16
+        returnExcessBuckets()
+
         -- Check if we have at least 1 bucket
         local bucketCount = countEmptyBuckets()
         if bucketCount < 1 then
@@ -176,11 +222,11 @@ local function farmLava()
         move.turnLeft()
 
         -- Second row: 5 cauldrons
-        tryFillBucket()
         for i = 1, 4 do
             tryFillBucket()
             move.goForward(false)
         end
+	tryFillBucket()        
 
         -- Return to start position
         move.turnLeft()
@@ -191,6 +237,9 @@ local function farmLava()
 
         -- Refuel until fuel is high enough or no more lava buckets
         refuelLoop()
+
+        -- Restack empty buckets from refueling into slot 1
+        restackEmptyBuckets()
 
         -- Deposit all remaining lava buckets to network
         print("Depositing lava buckets...")
