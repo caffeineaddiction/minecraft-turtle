@@ -43,8 +43,22 @@ local function countEmptyBuckets()
     return count
 end
 
+-- Check if there's a cauldron above
+local function isCauldronAbove()
+    local success, data = turtle.inspectUp()
+    if success and data.name and data.name:find("cauldron") then
+        return true
+    end
+    return false
+end
+
 -- Try to fill bucket with lava from cauldron above
+-- Only interacts if there's a cauldron above
 local function tryFillBucket()
+    if not isCauldronAbove() then
+        return false
+    end
+
     if selectEmptyBucket() then
         -- placeUp will use the bucket on the cauldron above
         if turtle.placeUp() then
@@ -55,42 +69,72 @@ local function tryFillBucket()
     return false
 end
 
--- Try to refuel with a lava bucket if fuel is low
-local function tryRefuel()
+-- Refuel with lava buckets until fuel >= maxFuel - 1000 or no more lava buckets
+local function refuelLoop()
     local fuelLevel = turtle.getFuelLevel()
     local fuelLimit = turtle.getFuelLimit()
 
-    -- Skip if unlimited fuel or fuel is high enough
+    -- Skip if unlimited fuel
     if fuelLevel == "unlimited" then
-        return false
+        return
     end
 
-    if fuelLevel >= fuelLimit - 1000 then
-        return false
-    end
-
-    -- Find and use a lava bucket for fuel
-    for slot = 1, 16 do
-        local item = turtle.getItemDetail(slot)
-        if item and item.name == "minecraft:lava_bucket" then
-            turtle.select(slot)
-            if turtle.refuel() then
-                print("Refueled with lava bucket (fuel: " .. turtle.getFuelLevel() .. ")")
-                return true
+    local refueled = 0
+    while turtle.getFuelLevel() < fuelLimit - 1000 do
+        local found = false
+        for slot = 1, 16 do
+            local item = turtle.getItemDetail(slot)
+            if item and item.name == "minecraft:lava_bucket" then
+                turtle.select(slot)
+                if turtle.refuel() then
+                    refueled = refueled + 1
+                    print("Refueled with lava bucket (fuel: " .. turtle.getFuelLevel() .. ")")
+                    found = true
+                    break
+                end
             end
+        end
+        -- No more lava buckets found
+        if not found then
+            break
         end
     end
 
+    if refueled > 0 then
+        print("Used " .. refueled .. " lava bucket(s) for fuel")
+    end
+end
+
+-- Check if we have any lava buckets in inventory
+local function hasLavaBuckets()
+    for slot = 1, 16 do
+        local item = turtle.getItemDetail(slot)
+        if item and item.name == "minecraft:lava_bucket" then
+            return true
+        end
+    end
     return false
 end
 
--- Deposit all lava buckets to the network
-local function depositLavaBuckets()
-    local count, err = imv.move("./lava_bucket:*", "../")
-    if count > 0 then
-        print("Deposited " .. count .. " lava bucket(s)")
+-- Deposit all lava buckets to the network (loops until none remain)
+local function depositAllLavaBuckets()
+    local totalDeposited = 0
+    while hasLavaBuckets() do
+        local count, err = imv.move("./lava_bucket:*", "../")
+        if count > 0 then
+            totalDeposited = totalDeposited + count
+        else
+            -- Failed to deposit, break to avoid infinite loop
+            if err then
+                print("Deposit error: " .. err)
+            end
+            break
+        end
     end
-    return count
+    if totalDeposited > 0 then
+        print("Deposited " .. totalDeposited .. " lava bucket(s) total")
+    end
+    return totalDeposited
 end
 
 -- Main farming loop
@@ -148,12 +192,12 @@ local function farmLava()
 
         -- Now facing the modem again
 
-        -- Refuel if needed before depositing
-        tryRefuel()
+        -- Refuel until fuel is high enough or no more lava buckets
+        refuelLoop()
 
-        -- Deposit all lava buckets to network
+        -- Deposit all remaining lava buckets to network
         print("Depositing lava buckets...")
-        depositLavaBuckets()
+        depositAllLavaBuckets()
 
         -- Sleep before next cycle
         print("Sleeping for " .. (SLEEP_TIME / 60) .. " minutes...")
