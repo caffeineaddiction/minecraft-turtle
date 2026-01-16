@@ -79,7 +79,7 @@ local function buildArrows()
     end
 end
 
-        
+       
 
 local function farmFlint()
     print("Starting Flint Farm")
@@ -143,7 +143,65 @@ local function farmWheat(row, col)
     end
 end
 
+function buildPaper()
+    local sugarcaneCount = 0
+    -- First pass: push paper down and count sugarcane
+    for slot = 1, 16 do
+        turtle.select(slot)
+        local item = turtle.getItemDetail()
+        
+        if item then
+            if item.name == "minecraft:paper" then
+                -- Push paper to chest below
+                turtle.dropDown()
+            elseif item.name == "minecraft:sugar" then -- whoops added sugar by mistake
+                -- Push sugar to chest below
+                turtle.dropDown()
+            elseif item.name == "minecraft:sugar_cane" then
+                sugarcaneCount = sugarcaneCount + item.count
+                if slot > 1 then
+                    if not turtle.transferTo(1, item.count) then
+                        if not turtle.transferTo(2, item.count) then
+                            if not turtle.transferTo(3, item.count) then
+                                turtle.dropDown()
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
 
+    if sugarcaneCount < 3 then
+        return
+    end
+
+    -- Evenly distribute sugarcane into first three slots
+    local perSlot = math.floor(sugarcaneCount / 3)
+    for slot = 1, 2 do
+        turtle.select(slot)
+        local item = turtle.getItemDetail()
+        local currentCount = item and item.count or 0
+        if currentCount > perSlot then
+            turtle.transferTo(slot + 1, currentCount - perSlot)
+        end
+    end
+    turtle.select(1)
+
+    -- Craft paper
+    turtle.craft()
+
+end
+
+
+local function farmSugarCane()
+    while true do
+        turtle.dig()
+        buildPaper()
+        move.turnRight()
+        sleep(0.5)
+    end
+end
 
 local args = {...}
 
@@ -167,6 +225,10 @@ local function parseArgs()
             local col = args[i+2]
             print("Farming Wheat")
             farmWheat(row, col)
+            return
+        elseif args[i] == "sugarcane" then
+            print("Farming Sugar Cane")
+            farmSugarCane()
             return
         end
     end
