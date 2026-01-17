@@ -13,7 +13,7 @@ PATTERN FORMAT:
 
   location: peripheral name, fuzzy match (chest23), ./ (self), * or ../ (any)
   item:     item name or fuzzy match, =name for exact match (defaults to *)
-  count:    number, * or + for full stack (defaults to 1)
+  count:    number, * or + for one full stack, ++ for ALL matching items (defaults to 1)
 
 EXAMPLES:
   imv chest23/lava:1 ./        -- 1 lava from chest23 to self
@@ -21,6 +21,7 @@ EXAMPLES:
   imv */diamond:+ ./           -- full stack of diamonds from anywhere to self
   imv ./lava:1 ../             -- 1 lava from self to any available chest
   imv */=bucket:1 ./           -- 1 empty bucket (exact match, not lava_bucket)
+  imv ./*:++ ../               -- ALL items from self to any available chest
 
 LIBRARY USAGE:
   local imv = require("imv")
@@ -179,8 +180,10 @@ function imv.parsePattern(str)
     -- Parse item:count from rest
     local item, countStr = rest:match("^([^:]+):?([%d%*%+]*)$")
     local count
-    if countStr == "*" or countStr == "+" then
-        count = "max"  -- sentinel: use item's maxCount
+    if countStr == "++" then
+        count = "all"  -- sentinel: transfer ALL matching items
+    elseif countStr == "*" or countStr == "+" then
+        count = "max"  -- sentinel: use item's maxCount (one stack)
     else
         count = tonumber(countStr) or 1
     end
@@ -332,9 +335,11 @@ function imv.move(srcPattern, dstPattern, opts)
 
                 -- Calculate how many to transfer
                 local toTransfer
-                if remaining == "max" then
+                if remaining == "all" then
+                    toTransfer = item.count  -- transfer entire stack, continue to next
+                elseif remaining == "max" then
                     toTransfer = math.min(item.maxCount, item.count)
-                    remaining = toTransfer  -- convert to number for tracking
+                    remaining = toTransfer  -- convert to number for tracking (one stack only)
                 else
                     toTransfer = math.min(remaining, item.count)
                 end
@@ -349,7 +354,9 @@ function imv.move(srcPattern, dstPattern, opts)
 
                             if ok and transferred and transferred > 0 then
                                 totalTransferred = totalTransferred + transferred
-                                remaining = remaining - transferred
+                                if type(remaining) == "number" then
+                                    remaining = remaining - transferred
+                                end
                                 toTransfer = toTransfer - transferred
                                 if verbose then
                                     print(string.format("%s: %d x %s -> %s", srcName, transferred, item.name, dstName))
@@ -367,7 +374,9 @@ function imv.move(srcPattern, dstPattern, opts)
 
                     if ok and transferred and transferred > 0 then
                         totalTransferred = totalTransferred + transferred
-                        remaining = remaining - transferred
+                        if type(remaining) == "number" then
+                            remaining = remaining - transferred
+                        end
                         if verbose then
                             print(string.format("%s: %d x %s -> %s", srcName, transferred, item.name, dstName))
                         end
@@ -424,13 +433,14 @@ local function main(args)
         print("  -v: verbose output")
         print("  location: peripheral name, fuzzy match (chest23), ./ (self), * or ../ (any)")
         print("  item: item name or fuzzy match, optional (defaults to *)")
-        print("  count: number, * or + for full stack (defaults to 1)")
+        print("  count: number, * or + for one stack, ++ for ALL (defaults to 1)")
         print("")
         print("Examples:")
         print("  imv chest23/lava:1 ./        -- 1 lava from chest23 to self")
         print("  imv ./coal:* chest23         -- full stack of coal from self to chest23")
         print("  imv */diamond:+ ./           -- full stack of diamonds from anywhere to self")
         print("  imv ./lava:1 ../             -- 1 lava from self to any available chest")
+        print("  imv ./*:++ ../               -- ALL items from self to network")
         print("")
         print("Use as library: local imv = require('imv')")
         return
