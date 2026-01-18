@@ -1,0 +1,190 @@
+--[[
+kelp.lua - Kelp farming script
+
+The turtle starts facing a wired modem. It moves up two blocks, turns around,
+then farms kelp in a zigzag pattern by harvesting plants below it.
+When done, it returns home, moves down to the modem, and dumps/refuels.
+
+Kelp regrows naturally from the base, so no replanting is needed.
+]]
+
+local imv = require("/bin/imv")
+local move = require("/lib/move")
+
+-- Check fuel and refuel from network if needed
+local function checkAndRefuel()
+    local fuelLevel = turtle.getFuelLevel()
+
+    if fuelLevel == "unlimited" then
+        return true
+    end
+
+    if fuelLevel >= 1000 then
+        return true
+    end
+
+    print("Fuel low (" .. fuelLevel .. "), getting lava bucket...")
+    local count, err = imv.move("../lava_bucket:1", "./")
+    if count > 0 then
+        -- Find and use the lava bucket
+        for slot = 1, 16 do
+            local item = turtle.getItemDetail(slot)
+            if item and item.name == "minecraft:lava_bucket" then
+                turtle.select(slot)
+                if turtle.refuel() then
+                    print("Refueled to " .. turtle.getFuelLevel())
+                    -- Return empty bucket to network
+                    local returned, retErr = imv.move("./=bucket:1", "../")
+                    if returned > 0 then
+                        print("Returned empty bucket to network")
+                    end
+                    return true
+                end
+            end
+        end
+    else
+        print("Could not get lava bucket: " .. (err or "none available"))
+    end
+
+    return turtle.getFuelLevel() >= 1000
+end
+
+-- Check and harvest kelp below if present
+local function checkAndHarvestBelow()
+    local success, data = turtle.inspectDown()
+    if not success then
+        return false
+    end
+
+    if data.name == "minecraft:kelp" or data.name == "minecraft:kelp_plant" then
+        print("Harvesting kelp")
+        turtle.digDown()
+        return true
+    end
+
+    return false
+end
+
+-- Try to move forward, return false if blocked
+local function tryMoveForward()
+    return move.goForward(false)
+end
+
+-- Dump harvested kelp to network
+local function dumpToNetwork()
+    print("Dumping harvested kelp to network...")
+    local totalDumped = 0
+
+    local dumpItems = {
+        "kelp"
+    }
+
+    for _, item in ipairs(dumpItems) do
+        while true do
+            local count, err = imv.move("./" .. item .. ":*", "../")
+            if count > 0 then
+                totalDumped = totalDumped + count
+            else
+                break
+            end
+        end
+    end
+
+    if totalDumped > 0 then
+        print("Dumped " .. totalDumped .. " item(s)")
+    end
+end
+
+-- Main farming function
+local function farmKelp()
+    print("Starting kelp farm")
+    print("Facing wired modem, ready to begin")
+
+    while true do
+        print("\n=== Starting farming cycle ===")
+
+        -- Check and refuel if needed
+        if not checkAndRefuel() then
+            print("Warning: Low fuel, continuing anyway...")
+        end
+
+        -- Move up two blocks
+        move.goUp()
+        move.goUp()
+
+        -- Reset position tracking (at farming level, not modem level)
+        move.setHome()
+
+        -- Turn around (face away from modem)
+        move.turnRight()
+        move.turnRight()
+
+        -- Track which direction we turn at end of rows
+        local turnRight = true
+
+        -- Main farming loop
+        while true do
+            -- Check and harvest below current position
+            checkAndHarvestBelow()
+
+            -- Try to move forward
+            if not tryMoveForward() then
+                -- Hit a wall, harvest current spot first
+                checkAndHarvestBelow()
+
+                -- Try to turn to next row
+                local turnSuccess = false
+                if turnRight then
+                    move.turnRight()
+                    if move.goForward(false) then
+                        move.turnRight()
+                        turnSuccess = true
+                    else
+                        -- Can't move to next row, end of farm
+                        move.turnLeft() -- undo the turn
+                    end
+                else
+                    move.turnLeft()
+                    if move.goForward(false) then
+                        move.turnLeft()
+                        turnSuccess = true
+                    else
+                        -- Can't move to next row, end of farm
+                        move.turnRight() -- undo the turn
+                    end
+                end
+
+                if turnSuccess then
+                    -- Successfully turned to next row, flip direction for next time
+                    turnRight = not turnRight
+                else
+                    -- End of farm reached
+                    print("End of farm reached")
+                    break
+                end
+            end
+        end
+
+        -- Return to start position on horizontal plane (still two blocks above modem)
+        print("Returning to start...")
+        move.goHome()
+
+        -- Move down to modem level
+        move.goDown()
+        move.goDown()
+
+        -- Turn back to face the modem (we turned 180 at start)
+        move.turnRight()
+        move.turnRight()
+
+        -- Dump harvested kelp to network
+        dumpToNetwork()
+
+        -- Pause before next cycle
+        print("Cycle complete, sleeping for 5 minutes...")
+        sleep(300)
+    end
+end
+
+-- Run the farm
+farmKelp()
