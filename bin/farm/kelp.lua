@@ -220,9 +220,8 @@ local function farmKelp()
         -- Move down to modem level
         move.goDown()
 
-        -- Turn back to face the modem (we turned 180 at start)
-        move.turnRight()
-        move.turnRight()
+        -- goHome() already returned us facing the original direction (toward modem)
+        -- No need to turn - we should be facing the modem now
 
         -- Dump harvested kelp to network
         dumpToNetwork()
