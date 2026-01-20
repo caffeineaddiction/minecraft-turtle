@@ -142,94 +142,189 @@ local function findInInventory(pattern)
     return nil
 end
 
--- Clear the crafting grid (slots 1-3, 5-7, 9-11)
-local function clearGrid()
-    local gridSlots = {1, 2, 3, 5, 6, 7, 9, 10, 11}
-    local storageSlots = {4, 8, 12, 13, 14, 15, 16}
+-- Grid and storage slot definitions
+local GRID_SLOTS = {1, 2, 3, 5, 6, 7, 9, 10, 11}
+local STORAGE_SLOTS = {4, 8, 12, 13, 14, 15, 16}
 
-    for _, gridSlot in ipairs(gridSlots) do
-        if turtle.getItemCount(gridSlot) > 0 then
-            turtle.select(gridSlot)
-            -- Find an empty storage slot
-            for _, storeSlot in ipairs(storageSlots) do
-                if turtle.getItemCount(storeSlot) == 0 then
-                    turtle.transferTo(storeSlot)
-                    break
-                end
+-- Check if an item matches a pattern
+local function itemMatchesPattern(item, pattern)
+    if not item or not pattern then return false end
+    local name = item.name:lower()
+    local shortName = name:gsub("^[^:]+:", "")
+    pattern = pattern:lower()
+    return name:find(pattern, 1, true) or shortName:find(pattern, 1, true)
+end
+
+-- Get current state of the crafting grid
+local function getGridState()
+    local state = {}
+    for _, slot in ipairs(GRID_SLOTS) do
+        local item = turtle.getItemDetail(slot)
+        if item then
+            state[slot] = item
+        end
+    end
+    return state
+end
+
+-- Move items from a slot to storage
+local function moveToStorage(slot)
+    if turtle.getItemCount(slot) == 0 then return true end
+    turtle.select(slot)
+    -- Try empty slots first
+    for _, storeSlot in ipairs(STORAGE_SLOTS) do
+        if turtle.getItemCount(storeSlot) == 0 then
+            turtle.transferTo(storeSlot)
+            return true
+        end
+    end
+    -- Try stacking with existing items
+    for _, storeSlot in ipairs(STORAGE_SLOTS) do
+        if turtle.transferTo(storeSlot) then
+            return true
+        end
+    end
+    return false
+end
+
+-- Find an item matching pattern, considering slots with excess items
+local function findItemSource(pattern, reservedSlots, amountPerSlot)
+    amountPerSlot = amountPerSlot or 1
+
+    -- Check storage slots first
+    for _, slot in ipairs(STORAGE_SLOTS) do
+        local item = turtle.getItemDetail(slot)
+        if item and itemMatchesPattern(item, pattern) then
+            return slot
+        end
+    end
+
+    -- Check grid slots that aren't reserved
+    for _, slot in ipairs(GRID_SLOTS) do
+        if not reservedSlots[slot] then
+            local item = turtle.getItemDetail(slot)
+            if item and itemMatchesPattern(item, pattern) then
+                return slot
             end
         end
     end
+
+    -- Check reserved grid slots that have excess (more than amountPerSlot)
+    for _, slot in ipairs(GRID_SLOTS) do
+        if reservedSlots[slot] then
+            local item = turtle.getItemDetail(slot)
+            if item and itemMatchesPattern(item, pattern) and item.count > amountPerSlot then
+                return slot
+            end
+        end
+    end
+
+    return nil
 end
 
--- Arrange items according to recipe grid (supports batch crafting with amountPerSlot)
+-- Arrange items according to recipe grid (diff-based, only moves what's needed)
 local function arrangeGrid(recipe, amountPerSlot)
     amountPerSlot = amountPerSlot or 1
 
-    -- First, clear the grid and consolidate items to storage slots
-    clearGrid()
-
-    -- Track what we've placed
-    local placed = {}
-
-    -- For each grid position in the recipe
+    -- Build desired state from recipe
+    local desiredState = {}
     for slotStr, itemPattern in pairs(recipe.grid) do
-        local targetSlot = tonumber(slotStr)
+        desiredState[tonumber(slotStr)] = itemPattern
+    end
 
-        -- Find this item in inventory (not in grid slots)
-        local sourceSlot = nil
-        for slot = 1, 16 do
-            -- Skip if already a grid slot with something placed
-            if not placed[slot] then
-                local item = turtle.getItemDetail(slot)
-                if item then
-                    local name = item.name:lower()
-                    local shortName = name:gsub("^[^:]+:", "")
-                    local pattern = itemPattern:lower()
-                    if name:find(pattern, 1, true) or shortName:find(pattern, 1, true) then
-                        sourceSlot = slot
-                        break
-                    end
+    -- Get current state
+    local currentState = getGridState()
+
+    -- Phase 1: Identify what's already correct, what needs clearing, what needs filling
+    local correct = {}      -- slots with correct item and count
+    local needsClear = {}   -- slots that have wrong item or shouldn't have anything
+    local needsFill = {}    -- slots that need an item placed
+
+    for _, slot in ipairs(GRID_SLOTS) do
+        local current = currentState[slot]
+        local desired = desiredState[slot]
+
+        if desired then
+            -- This slot should have an item
+            if current and itemMatchesPattern(current, desired) then
+                if current.count >= amountPerSlot then
+                    -- Correct item with enough - mark as correct
+                    correct[slot] = true
+                else
+                    -- Correct item but not enough - need to add more
+                    needsFill[slot] = desired
                 end
+            else
+                -- Wrong item or empty - clear if needed, then fill
+                if current then
+                    needsClear[slot] = true
+                end
+                needsFill[slot] = desired
+            end
+        else
+            -- This slot should be empty
+            if current then
+                needsClear[slot] = true
             end
         end
+    end
 
+    -- Phase 2: Clear slots that have wrong items (but not to storage if item is needed elsewhere)
+    for slot, _ in pairs(needsClear) do
+        moveToStorage(slot)
+    end
+
+    -- Phase 3: Fill slots that need items
+    for slot, pattern in pairs(needsFill) do
+        -- Skip if already correct
+        if correct[slot] then goto continue end
+
+        -- Find source for this item (including excess from correct slots)
+        local sourceSlot = findItemSource(pattern, correct, amountPerSlot)
         if not sourceSlot then
-            return false, "Missing item: " .. itemPattern
+            return false, "Missing item: " .. pattern
         end
 
-        -- Move amountPerSlot items to target slot
+        -- Move item to target slot
         turtle.select(sourceSlot)
-        if sourceSlot ~= targetSlot then
-            -- If target has items, swap them
-            if turtle.getItemCount(targetSlot) > 0 then
-                -- Find temp slot
-                local tempSlot = nil
-                for s = 1, 16 do
-                    if turtle.getItemCount(s) == 0 then
-                        tempSlot = s
-                        break
-                    end
-                end
-                if tempSlot then
-                    local currentSlot = turtle.getSelectedSlot()
-                    turtle.select(targetSlot)
-                    turtle.transferTo(tempSlot)
-                    turtle.select(sourceSlot)
-                end
+
+        -- Handle case where target still has items (shouldn't happen after phase 2, but just in case)
+        if turtle.getItemCount(slot) > 0 then
+            -- Check if we can stack
+            local targetItem = turtle.getItemDetail(slot)
+            if targetItem and itemMatchesPattern(targetItem, pattern) then
+                -- Same item, just transfer more
+                turtle.transferTo(slot, amountPerSlot - targetItem.count)
+            else
+                -- Different item, need to clear first
+                moveToStorage(slot)
+                turtle.select(sourceSlot)
+                turtle.transferTo(slot, amountPerSlot)
             end
-            turtle.transferTo(targetSlot, amountPerSlot)
-        elseif amountPerSlot < turtle.getItemCount(sourceSlot) then
-            -- Source is target, but we need to move excess out
-            local excess = turtle.getItemCount(sourceSlot) - amountPerSlot
-            for s = 1, 16 do
-                if s ~= sourceSlot and turtle.getItemCount(s) == 0 then
-                    turtle.transferTo(s, excess)
+        else
+            turtle.transferTo(slot, amountPerSlot)
+        end
+
+        correct[slot] = true
+        ::continue::
+    end
+
+    -- Phase 4: Handle slots with correct item but wrong count
+    for slot, _ in pairs(correct) do
+        local count = turtle.getItemCount(slot)
+        if count > amountPerSlot then
+            -- Move excess out
+            turtle.select(slot)
+            local excess = count - amountPerSlot
+            for _, storeSlot in ipairs(STORAGE_SLOTS) do
+                if turtle.getItemCount(storeSlot) == 0 then
+                    turtle.transferTo(storeSlot, excess)
+                    break
+                elseif turtle.transferTo(storeSlot, excess) then
                     break
                 end
             end
         end
-
-        placed[targetSlot] = true
     end
 
     return true
