@@ -67,15 +67,41 @@ end
 -- Check and harvest kelp in front if present
 local function checkAndHarvestFront()
     local success, data = turtle.inspect()
-    if success and isKelp(data) then
+    if not success then
+        -- Nothing in front (water or air)
+        return false
+    end
+
+    if isKelp(data) then
         turtle.dig()
         return true
     end
+
+    -- Something in front but not kelp (wall, etc) - that's fine
     return false
 end
 
--- Try to move forward, return false if blocked
+-- Try to move forward, dig if blocked by something diggable
 local function tryMoveForward()
+    -- First try without digging
+    if move.goForward(false) then
+        return true
+    end
+
+    -- If blocked, check what's in front
+    local success, data = turtle.inspect()
+    if success then
+        -- Something solid in front - try to dig it (could be kelp stem, etc)
+        if data.name == "minecraft:kelp" or data.name == "minecraft:kelp_plant" then
+            turtle.dig()
+            return move.goForward(false)
+        end
+        -- Hit an actual wall/boundary - don't dig
+        return false
+    end
+
+    -- Nothing detected but can't move (shouldn't happen underwater)
+    -- Try one more time
     return move.goForward(false)
 end
 
@@ -140,24 +166,46 @@ local function farmKelp()
 
             -- Try to move forward
             if not tryMoveForward() then
+                -- Check what's blocking us
+                local success, data = turtle.inspect()
+                if success then
+                    print("Blocked by: " .. data.name)
+                else
+                    print("Blocked but nothing detected")
+                end
+
                 -- Try to turn to next row
                 local turnSuccess = false
                 if turnRight then
                     move.turnRight()
+                    -- Check what's in the next row direction
+                    local sideSuccess, sideData = turtle.inspect()
+                    if sideSuccess then
+                        print("Side blocked by: " .. sideData.name)
+                    end
                     if move.goForward(false) then
                         move.turnRight()
                         turnSuccess = true
+                        print("Turned to next row (right)")
                     else
                         -- Can't move to next row, end of farm
+                        print("Can't move to next row (right)")
                         move.turnLeft() -- undo the turn
                     end
                 else
                     move.turnLeft()
+                    -- Check what's in the next row direction
+                    local sideSuccess, sideData = turtle.inspect()
+                    if sideSuccess then
+                        print("Side blocked by: " .. sideData.name)
+                    end
                     if move.goForward(false) then
                         move.turnLeft()
                         turnSuccess = true
+                        print("Turned to next row (left)")
                     else
                         -- Can't move to next row, end of farm
+                        print("Can't move to next row (left)")
                         move.turnRight() -- undo the turn
                     end
                 end
