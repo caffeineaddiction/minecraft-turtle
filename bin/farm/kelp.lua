@@ -1,8 +1,8 @@
 --[[
 kelp.lua - Kelp farming script
 
-The turtle starts facing a wired modem. It moves up two blocks, turns around,
-then farms kelp in a zigzag pattern by harvesting plants below it.
+The turtle starts facing a wired modem. It moves up one block, turns around,
+then farms kelp in a zigzag pattern by harvesting plants in front and below.
 When done, it returns home, moves down to the modem, and dumps/refuels.
 
 Kelp regrows naturally from the base, so no replanting is needed.
@@ -49,19 +49,28 @@ local function checkAndRefuel()
     return turtle.getFuelLevel() >= 1000
 end
 
+-- Check if block is kelp
+local function isKelp(data)
+    return data and (data.name == "minecraft:kelp" or data.name == "minecraft:kelp_plant")
+end
+
 -- Check and harvest kelp below if present
 local function checkAndHarvestBelow()
     local success, data = turtle.inspectDown()
-    if not success then
-        return false
-    end
-
-    if data.name == "minecraft:kelp" or data.name == "minecraft:kelp_plant" then
-        print("Harvesting kelp")
+    if success and isKelp(data) then
         turtle.digDown()
         return true
     end
+    return false
+end
 
+-- Check and harvest kelp in front if present
+local function checkAndHarvestFront()
+    local success, data = turtle.inspect()
+    if success and isKelp(data) then
+        turtle.dig()
+        return true
+    end
     return false
 end
 
@@ -108,8 +117,7 @@ local function farmKelp()
             print("Warning: Low fuel, continuing anyway...")
         end
 
-        -- Move up two blocks
-        move.goUp()
+        -- Move up one block to farming level
         move.goUp()
 
         -- Reset position tracking (at farming level, not modem level)
@@ -124,14 +132,14 @@ local function farmKelp()
 
         -- Main farming loop
         while true do
+            -- Check and harvest in front if kelp
+            checkAndHarvestFront()
+
             -- Check and harvest below current position
             checkAndHarvestBelow()
 
             -- Try to move forward
             if not tryMoveForward() then
-                -- Hit a wall, harvest current spot first
-                checkAndHarvestBelow()
-
                 -- Try to turn to next row
                 local turnSuccess = false
                 if turnRight then
@@ -165,12 +173,11 @@ local function farmKelp()
             end
         end
 
-        -- Return to start position on horizontal plane (still two blocks above modem)
+        -- Return to start position on horizontal plane (still one block above modem)
         print("Returning to start...")
         move.goHome()
 
         -- Move down to modem level
-        move.goDown()
         move.goDown()
 
         -- Turn back to face the modem (we turned 180 at start)
