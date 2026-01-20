@@ -10,6 +10,7 @@ Example truck_path.json:
 [
   {
     "Desc": "Move Kelp to Processing Network",
+    "preSkip": "=kelp:64",
     "Commands": [
       "imv ../=kelp:++ ./",
       "mtk -m 'tltlmfmfmfmfmfmfmfmfmfmfmftrmfmfmftlmumumumu'",
@@ -23,6 +24,13 @@ Example truck_path.json:
     "Commands": []
   }
 ]
+
+Task fields:
+  Desc      - Description of the task
+  Commands  - Array of commands to execute
+  preSkip   - Optional. Format: "item:minCount". Skip task if fewer than
+              minCount items matching pattern are on the network.
+              Example: "=kelp:64" skips if less than 64 kelp available.
 
 USAGE:
   auto_truck              -- Run once through all tasks
@@ -41,6 +49,9 @@ local CONFIG_PATH = "./truck_path.json"
 local FUEL_THRESHOLD = 1000
 local DEBUG = false
 
+-- Load imv for preSkip queries
+local imv = require("imv")
+
 local function debugLog(...)
     if not DEBUG then return end
     local args = {...}
@@ -56,6 +67,37 @@ local function crashOnError(msg)
     debugLog("FATAL ERROR:", msg)
     if DEBUG then
         error(msg, 2)
+    end
+end
+
+-- Parse preSkip condition: "item:minCount" (e.g., "=kelp:64")
+-- Returns: itemPattern, minCount or nil, nil if invalid
+local function parsePreSkip(preSkip)
+    if not preSkip or type(preSkip) ~= "string" then
+        return nil, nil
+    end
+    local item, countStr = preSkip:match("^([^:]+):(%d+)$")
+    if item and countStr then
+        return item, tonumber(countStr)
+    end
+    return nil, nil
+end
+
+-- Check if preSkip condition is met (returns true if task should run)
+local function checkPreSkip(preSkip)
+    local item, minCount = parsePreSkip(preSkip)
+    if not item then
+        return true  -- No valid preSkip, run the task
+    end
+
+    debugLog("preSkip check: need", minCount, "of", item)
+    local count = imv.queryCount(item)
+    debugLog("preSkip check: found", count)
+
+    if count >= minCount then
+        return true  -- Enough items, run the task
+    else
+        return false, count, minCount  -- Not enough, skip
     end
 end
 
@@ -272,6 +314,7 @@ end
 local function executeTask(task, taskNum, verbose)
     local desc = task.Desc or task.desc or ("Task " .. taskNum)
     local commands = task.Commands or task.commands or {}
+    local preSkip = task.preSkip or task.PreSkip
 
     debugLog("executeTask(", taskNum, ",", desc, ") -", #commands, "commands")
 
@@ -281,7 +324,16 @@ local function executeTask(task, taskNum, verbose)
         if verbose then
             print("Skipping empty task: " .. desc)
         end
-        return true
+        return true, "empty"
+    end
+
+    -- Check preSkip condition
+    if preSkip then
+        local shouldRun, found, needed = checkPreSkip(preSkip)
+        if not shouldRun then
+            print("Skipping task " .. taskNum .. ": " .. desc .. " (need " .. needed .. " items, found " .. found .. ")")
+            return true, "skipped"
+        end
     end
 
     print("Task " .. taskNum .. ": " .. desc)
@@ -297,7 +349,7 @@ local function executeTask(task, taskNum, verbose)
     end
 
     debugLog("  Task completed")
-    return true
+    return true, "completed"
 end
 
 -- Main loop
@@ -344,17 +396,20 @@ local function run(config)
             debugLog("=== Starting task", taskNum, "of", #tasks, "===")
 
             -- Execute the task
-            executeTask(task, taskNum, config.verbose)
+            local success, status = executeTask(task, taskNum, config.verbose)
 
-            -- Clear inventory after task
-            debugLog("Post-task: clearing inventory")
-            clearInventory()
+            -- Only do post-task cleanup if task actually ran
+            if status == "completed" then
+                -- Clear inventory after task
+                debugLog("Post-task: clearing inventory")
+                clearInventory()
 
-            -- Check fuel after clearing (for next task)
-            debugLog("Post-task: checking fuel")
-            checkFuel()
+                -- Check fuel after clearing (for next task)
+                debugLog("Post-task: checking fuel")
+                checkFuel()
+            end
 
-            debugLog("=== Finished task", taskNum, "===")
+            debugLog("=== Finished task", taskNum, "(", status, ") ===")
         end
 
         -- Check if we should continue looping

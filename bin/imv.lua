@@ -533,17 +533,20 @@ function imv.move(srcPattern, dstPattern, opts)
     end
 
     local totalTransferred = 0
-    local remaining = srcCount  -- may be "max" or a number
+    local remaining = srcCount  -- may be "max", "all", or a number
+    local destinationFull = false
 
     -- Search through all source locations
     for _, srcName in ipairs(srcNames) do
         if type(remaining) == "number" and remaining <= 0 then break end
+        if destinationFull then break end
 
         local items = imv.findItems(srcName, srcItem)
 
         if #items > 0 then
             for _, item in ipairs(items) do
                 if type(remaining) == "number" and remaining <= 0 then break end
+                if destinationFull then break end
 
                 -- Calculate how many to transfer
                 local toTransfer
@@ -558,6 +561,7 @@ function imv.move(srcPattern, dstPattern, opts)
 
                 if dstAnyMode then
                     -- Try each destination until we successfully transfer
+                    local transferredAny = false
                     for _, dstName in ipairs(dstNames) do
                         if dstName ~= srcName and toTransfer > 0 then
                             local ok, transferred = pcall(function()
@@ -570,12 +574,18 @@ function imv.move(srcPattern, dstPattern, opts)
                                     remaining = remaining - transferred
                                 end
                                 toTransfer = toTransfer - transferred
+                                transferredAny = true
                                 if verbose then
                                     print(string.format("%s: %d x %s -> %s", srcName, transferred, item.name, dstName))
                                 end
                             end
                         end
                         if toTransfer <= 0 then break end
+                    end
+                    -- If we couldn't transfer to ANY destination in "all" mode, network is full
+                    if remaining == "all" and not transferredAny and toTransfer > 0 then
+                        debugLog("All destinations full, stopping early")
+                        destinationFull = true
                     end
                 else
                     -- Single destination
@@ -592,6 +602,15 @@ function imv.move(srcPattern, dstPattern, opts)
                         if verbose then
                             print(string.format("%s: %d x %s -> %s", srcName, transferred, item.name, dstName))
                         end
+                        -- If we transferred less than requested in "all" mode, destination is full
+                        if remaining == "all" and transferred < toTransfer then
+                            debugLog("Destination full (transferred", transferred, "of", toTransfer, "), stopping early")
+                            destinationFull = true
+                        end
+                    elseif remaining == "all" and toTransfer > 0 then
+                        -- Requested transfer but got nothing - destination full
+                        debugLog("Destination full (0 transferred), stopping early")
+                        destinationFull = true
                     end
                 end
             end
@@ -976,18 +995,27 @@ local function main(args)
 end
 
 -- Check if running as CLI or being required as library
--- When required, ... contains the module name; when run as program, ... contains CLI args
+-- When required, ... contains the module name (e.g., "imv" or "/bin/imv")
+-- When run as CLI, ... contains command line arguments
 local args = {...}
--- Run as CLI if: no args, or first arg looks like a flag/pattern (not a module path)
 local firstArg = args[1]
-local isCLI = #args == 0 or
-              (type(firstArg) == "string" and
-               (firstArg:match("^%-") or      -- starts with flag
-                firstArg:match("^q:") or      -- query pattern
-                firstArg:match("^%./") or     -- ./ path
-                firstArg:match("^%.%./") or   -- ../ path
-                firstArg:match("^%*") or      -- * wildcard
-                #args >= 2))                  -- multiple args
+
+-- Detect if this looks like a require() call (module path passed)
+local isRequire = type(firstArg) == "string" and
+                  (firstArg == "imv" or
+                   firstArg:match("^/") or           -- absolute path like /bin/imv
+                   firstArg:match("^[%w_]+$"))       -- simple module name
+
+-- Run as CLI if not a require and has valid CLI args
+local isCLI = not isRequire and
+              (#args == 0 or
+               (type(firstArg) == "string" and
+                (firstArg:match("^%-") or      -- starts with flag
+                 firstArg:match("^q:") or      -- query pattern
+                 firstArg:match("^%./") or     -- ./ path
+                 firstArg:match("^%.%./") or   -- ../ path
+                 firstArg:match("^%*") or      -- * wildcard
+                 #args >= 2)))                 -- multiple args
 
 if isCLI then
     local success = main(args)
