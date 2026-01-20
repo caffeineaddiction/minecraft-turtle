@@ -178,34 +178,26 @@ local function farmKelp()
                 local turnSuccess = false
                 if turnRight then
                     move.turnRight()
-                    -- Check what's in the next row direction
-                    local sideSuccess, sideData = turtle.inspect()
-                    if sideSuccess then
-                        print("Side blocked by: " .. sideData.name)
-                    end
-                    if move.goForward(false) then
+                    -- Harvest any kelp blocking the next row
+                    checkAndHarvestFront()
+                    checkAndHarvestBelow()
+                    if tryMoveForward() then
                         move.turnRight()
                         turnSuccess = true
-                        print("Turned to next row (right)")
                     else
                         -- Can't move to next row, end of farm
-                        print("Can't move to next row (right)")
                         move.turnLeft() -- undo the turn
                     end
                 else
                     move.turnLeft()
-                    -- Check what's in the next row direction
-                    local sideSuccess, sideData = turtle.inspect()
-                    if sideSuccess then
-                        print("Side blocked by: " .. sideData.name)
-                    end
-                    if move.goForward(false) then
+                    -- Harvest any kelp blocking the next row
+                    checkAndHarvestFront()
+                    checkAndHarvestBelow()
+                    if tryMoveForward() then
                         move.turnLeft()
                         turnSuccess = true
-                        print("Turned to next row (left)")
                     else
                         -- Can't move to next row, end of farm
-                        print("Can't move to next row (left)")
                         move.turnRight() -- undo the turn
                     end
                 end
