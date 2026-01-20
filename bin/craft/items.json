@@ -19,7 +19,7 @@
         "11": "dried_kelp"
       }
     },
-    "dried_kelp_block": {
+    "hay_bale": {
       "output": "minecraft:hay_bale",
       "outputCount": 1,
       "ingredients": [
