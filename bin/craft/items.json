@@ -23,7 +23,7 @@
       "output": "minecraft:hay_bale",
       "outputCount": 1,
       "ingredients": [
-        {"item": "", "count": 9}
+        {"item": "wheat", "count": 9}
       ],
       "grid": {
         "1": "wheat",
